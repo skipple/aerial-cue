@@ -1,33 +1,35 @@
 package com.aerialcue;
 
-import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import javax.inject.Inject;
 import javax.inject.Singleton;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
-import javax.sound.sampled.FloatControl;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.audio.AudioPlayer;
 
 /**
- * Holds a {@link SoundProfile}'s clips open and ready to fire.
+ * Holds a {@link SoundProfile}'s clips in memory, ready to fire.
  *
- * Cues have to land on the game tick that scheduled them, so playback cannot afford to open an
- * audio line: allocating and opening a line costs tens to hundreds of milliseconds and is prone to
- * stalling, which is audible against a 600ms tick. Every clip is therefore decoded and opened once,
- * up front and off the client thread, leaving playback as a rewind and a start.
+ * Cues have to land on the game tick that scheduled them, so playback cannot afford to read a wav
+ * off the classpath first: inflating it out of the jar is prone to stalling, which is audible
+ * against a 600ms tick. Every clip is therefore read into a byte array once, up front and off the
+ * client thread, leaving playback as a handoff to {@link AudioPlayer} on the audio thread.
  */
 @Slf4j
 @Singleton
 class CueSoundPlayer
 {
-	/** Opening and closing lines blocks, so it never happens on the client thread. */
+	@Inject
+	private AudioPlayer audioPlayer;
+
+	/** Opening a line blocks, so playback never happens on the client thread. */
 	private ExecutorService executor;
 
-	/** Open clips for the loaded profile, indexed by cue number minus one. Null entries failed to open. */
-	private volatile Clip[] clips;
+	/** Raw wav data for the loaded profile, indexed by cue number minus one. Null entries failed to load. */
+	private volatile byte[][] samples;
 	private SoundProfile requested;
 
 	void start()
@@ -42,21 +44,13 @@ class CueSoundPlayer
 
 	void stop()
 	{
-		Clip[] open = clips;
-		clips = null;
+		samples = null;
 		requested = null;
 
 		if (executor != null)
 		{
-			// Hand the close off before shutdown so it does not block the client thread; shutdownNow
-			// only interrupts, and closing a line does not respond to interrupts anyway.
-			executor.execute(() -> close(open));
-			executor.shutdown();
+			executor.shutdownNow();
 			executor = null;
-		}
-		else
-		{
-			close(open);
 		}
 	}
 
@@ -71,12 +65,10 @@ class CueSoundPlayer
 
 		executor.execute(() ->
 		{
-			Clip[] previous = clips;
-			clips = null;
-			close(previous);
+			samples = null;
 
-			Clip[] opened = new Clip[AerialCuePlugin.MAX_CUE_TICKS];
-			for (int i = 0; i < opened.length; i++)
+			byte[][] loaded = new byte[AerialCuePlugin.MAX_CUE_TICKS][];
+			for (int i = 0; i < loaded.length; i++)
 			{
 				String path = "/sounds/" + profile.getDirectory() + "/tick_" + (i + 1) + ".wav";
 				try (InputStream in = CueSoundPlayer.class.getResourceAsStream(path))
@@ -87,21 +79,16 @@ class CueSoundPlayer
 						continue;
 					}
 
-					try (AudioInputStream audio = AudioSystem.getAudioInputStream(new BufferedInputStream(in)))
-					{
-						Clip clip = AudioSystem.getClip();
-						clip.open(audio);
-						opened[i] = clip;
-					}
+					loaded[i] = readFully(in);
 				}
 				catch (Exception e)
 				{
-					log.warn("Unable to open cue sound {}", path, e);
+					log.warn("Unable to load cue sound {}", path, e);
 				}
 			}
 
-			clips = opened;
-			log.debug("Opened sound profile {}", profile);
+			samples = loaded;
+			log.debug("Loaded sound profile {}", profile);
 		});
 	}
 
@@ -110,57 +97,53 @@ class CueSoundPlayer
 	 */
 	void play(int cue, int volume)
 	{
-		Clip[] current = clips;
-		if (current == null || volume <= 0 || cue < 1 || cue > current.length)
+		byte[][] current = samples;
+		ExecutorService executor = this.executor;
+
+		if (current == null || executor == null || volume <= 0 || cue < 1 || cue > current.length)
 		{
 			return;
 		}
 
-		Clip clip = current[cue - 1];
-		if (clip == null)
+		byte[] sample = current[cue - 1];
+		if (sample == null)
 		{
 			return;
 		}
+
+		// Matches the client's own notification volume curve: linear 1-100 to decibel gain.
+		float gain = (float) Math.log10(Math.min(volume, 100) / 100f) * 20f;
 
 		try
 		{
-			// Matches the client's own notification volume curve: linear 1-100 to decibel gain.
-			setGain(clip, (float) Math.log10(Math.min(volume, 100) / 100f) * 20f);
-
-			clip.stop();
-			clip.setFramePosition(0);
-			clip.start();
+			executor.execute(() ->
+			{
+				try
+				{
+					audioPlayer.play(new ByteArrayInputStream(sample), gain);
+				}
+				catch (Exception e)
+				{
+					log.warn("Unable to play cue {}", cue, e);
+				}
+			});
 		}
 		catch (Exception e)
 		{
-			log.warn("Unable to play cue {}", cue, e);
+			log.debug("Dropped cue {}", cue, e);
 		}
 	}
 
-	private static void setGain(Clip clip, float gain)
+	private static byte[] readFully(InputStream in) throws Exception
 	{
-		if (!clip.isControlSupported(FloatControl.Type.MASTER_GAIN))
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		byte[] buffer = new byte[8192];
+
+		for (int read; (read = in.read(buffer)) != -1; )
 		{
-			return;
+			out.write(buffer, 0, read);
 		}
 
-		FloatControl control = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-		control.setValue(Math.max(control.getMinimum(), Math.min(control.getMaximum(), gain)));
-	}
-
-	private static void close(Clip[] clips)
-	{
-		if (clips == null)
-		{
-			return;
-		}
-
-		for (Clip clip : clips)
-		{
-			if (clip != null)
-			{
-				clip.close();
-			}
-		}
+		return out.toByteArray();
 	}
 }
