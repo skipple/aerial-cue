@@ -19,7 +19,7 @@ public interface AerialCueConfig extends Config
 	)
 	default SoundProfile soundProfile()
 	{
-		return SoundProfile.TONE;
+		return SoundProfile.MARIMBA;
 	}
 
 	@ConfigItem(
