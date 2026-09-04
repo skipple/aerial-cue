@@ -48,4 +48,28 @@ public interface AerialCueConfig extends Config
 	{
 		return 100;
 	}
+
+	@ConfigItem(
+		position = 3,
+		keyName = "humanizeGain",
+		name = "Vary volume slightly",
+		description = "Randomly varies each cue's volume by an inaudible amount, so exact repeats don't wear on"
+			+ " your ears over a long session."
+	)
+	default boolean humanizeGain()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		position = 4,
+		keyName = "humanizePitch",
+		name = "Vary pitch slightly",
+		description = "Randomly varies each cue's pitch by an inaudible amount, so exact repeats don't wear on"
+			+ " your ears over a long session."
+	)
+	default boolean humanizePitch()
+	{
+		return true;
+	}
 }

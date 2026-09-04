@@ -27,4 +27,10 @@ At 1 you get a single note, exactly when you can click.
 
 **Volume** — how loud the cues are, on top of your normal RuneLite volume.
 
+**Vary volume slightly** and **Vary pitch slightly** — on by default. Each cue plays a hair louder
+or quieter, and a hair sharper or flatter, than the last: under 1 dB and under 4 cents, which is
+below what you can hear as a change. The point is that no two cues are ever the exact same
+waveform. Thousands of identical repeats an hour is what makes a sound grate long before the
+sound itself does. Turn them off if you want every cue rigidly identical.
+
 ![Settings](docs/settings.png)

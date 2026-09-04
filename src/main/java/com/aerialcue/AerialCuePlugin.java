@@ -163,7 +163,7 @@ public class AerialCuePlugin extends Plugin
 		// One cue per tick, for whichever catch lands first, so overlapping catches cannot stack sounds.
 		if (soonest != Integer.MAX_VALUE && cue <= Math.min(config.countdownTicks(), MAX_CUE_TICKS))
 		{
-			soundPlayer.play(cue, config.volume());
+			soundPlayer.play(cue, config.volume(), config.humanizeGain(), config.humanizePitch());
 		}
 	}
 
