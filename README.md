@@ -1,20 +1,30 @@
 # Aerial Cue
 
-Audio cues for aerial fishing. While your bird is away, the plugin counts down the ticks
-until the next fishing spot can be clicked: `tick_1` plays on the tick the spot is clickable
-again, `tick_2` the tick before it, and so on, so the rising run lands right on your click.
+Audio cues that teach you the rhythm of aerial fishing.
 
-Cues only play while the aerial fishing gloves are equipped. The wait is derived from your
-distance to the spot, with frenzied (large) spots using their own fixed duration.
+<!-- TODO: screenshot / gif goes here -->
+<!-- ![Aerial Cue](docs/images/aerial-cue.png) -->
 
-## Config
+## What it does
 
-- **Sound profile** — which bundled set of five sounds to play (`Tone`, `Blip`).
-- **Countdown length** — how many cues to play, 1 to 5. Lower it if the full run is too busy;
-  at 1 you only get the cue on the tick you can click.
-- **Volume** — playback volume of the cues.
+While participating in Aerial Fishing, the plugin pays a short countdown of rising notes while your bird is out. 
+The last note lands on the tick the next fishing spot becomes clickable, so you click on the note rather than reacting
+after it.
 
-## Adding a sound profile
+Because the cues are pitched, each length of wait has its own shape. You stop counting notes
+and start recognizing the musical phrase. You learn to click on sound on the exact tick 
+the cormorant returns. The audio cues run together into a beat you fish to.
 
-Drop a directory of five wavs (`tick_1.wav` … `tick_5.wav`, where `tick_N` plays when N-1 ticks
-remain) into `src/main/resources/sounds/`, then add a matching constant to `SoundProfile`.
+## Settings
+
+**Sound profile** — which set of sounds to count down with. Several are bundled, from clean
+tones to marimba, kalimba, plucked string, guitar chords and deep percussion. They all play
+the same rising pattern, so switching profiles changes the character without changing the music to muscle memory
+you have developed.
+
+**Countdown length** — how many notes to play, 1 to 5. Lower it if the full run feels busy.
+At 1 you get a single note, exactly when you can click.
+
+**Volume** — how loud the cues are, on top of your normal RuneLite volume.
+
+![Settings](docs/settings.png)
