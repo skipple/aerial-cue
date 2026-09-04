@@ -7,7 +7,7 @@ Audio cues that teach you the rhythm of aerial fishing.
 
 ## What it does
 
-While participating in Aerial Fishing, the plugin pays a short countdown of rising notes while your bird is out. 
+While participating in Aerial Fishing, the plugin plays a short countdown of rising notes while your bird is out. 
 The last note lands on the tick the next fishing spot becomes clickable, so you click on the note rather than reacting
 after it.
 
