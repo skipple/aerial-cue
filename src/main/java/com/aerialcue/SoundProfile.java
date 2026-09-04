@@ -16,7 +16,16 @@ import lombok.RequiredArgsConstructor;
 public enum SoundProfile
 {
 	TONE("Tone", "tone"),
-	BLIP("Blip", "blip");
+	MARIMBA("Marimba", "marimba"),
+	KALIMBA("Kalimba", "kalimba"),
+	LOG_DRUM("Log drum", "logdrum"),
+	GLASS("Glass", "glass"),
+	PLUCK("Pluck", "pluck"),
+	/** Deliberately longer than a game tick, so consecutive cues ring over one another. */
+	PLUCK_LONG("Pluck (long)", "plucklong"),
+	GUITAR("Guitar chords", "guitar"),
+	DRUMPAD("Drum pad", "drumpad"),
+	SUB_808("808", "sub808");
 
 	private final String displayName;
 	private final String directory;
